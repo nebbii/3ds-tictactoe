@@ -57,7 +57,6 @@ int *handleInput(u16 px, u16 py) {
 }
 
 
-
 int main(int argc, char **argv) {
     gfxInitDefault();
     consoleInit(GFX_BOTTOM, NULL);
@@ -67,6 +66,8 @@ int main(int argc, char **argv) {
         {0, 0, 0},
         {0, 0, 0}
     };
+
+    int turn = 1;
 
     // Main loop
     while (aptMainLoop())
@@ -81,7 +82,14 @@ int main(int argc, char **argv) {
         int *cs = handleInput(touch.px, touch.py);
 
         // Handle input and set checkboxes
-        if (kDown & KEY_TOUCH) pf[cs[0]][cs[1]] = 1;
+        if ((kDown & KEY_TOUCH) && (cs[0] != -1 && cs[1] != -1)) { 
+            if (pf[cs[0]][cs[1]] == 0) {
+                pf[cs[0]][cs[1]] = turn;
+
+                // flip turn
+                turn = (turn == 1 ? 2 : 1);
+            }
+        }
 
         // Print playfield
         printf("\x1b[1;1H%s", renderPlayfield(pf).c_str());
@@ -90,6 +98,7 @@ int main(int argc, char **argv) {
         printf("\x1b[5;1HX position: %i    ", touch.px);
         printf("\x1b[6;1HY position: %i    ", touch.py);
         printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
+        printf("\x1b[8;1HTurn: %i", turn);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
