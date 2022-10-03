@@ -25,7 +25,8 @@ std::string renderPlayfield(int field[3][3]) {
 }
 
 int *handleInput(u16 px, u16 py) {
-    static int slot[] = {0, 0};
+    static int slot[] = {-1, -1};
+
     if (px < 8) {
         slot[0] = 0;
     }
@@ -34,6 +35,9 @@ int *handleInput(u16 px, u16 py) {
     }
     else if (px < 24) {
         slot[0] = 2;
+    }
+    else {
+        return {new int[2]{-1, -1}};
     }
 
     if (py < 8) {
@@ -45,9 +49,14 @@ int *handleInput(u16 px, u16 py) {
     else if (py < 24) {
         slot[1] = 2;
     }
+    else {
+        return {new int[2]{-1, -1}};
+    }
 
     return slot;
 }
+
+
 
 int main(int argc, char **argv) {
     gfxInitDefault();
@@ -59,8 +68,6 @@ int main(int argc, char **argv) {
         {0, 0, 0}
     };
 
-    int *currentSlot = handleInput(0, 0);
-
     // Main loop
     while (aptMainLoop())
     {
@@ -71,22 +78,18 @@ int main(int argc, char **argv) {
         
         // Check for buttons
         u32 kDown = hidKeysDown();
-
-        printf("\x1b[1;1H%s", renderPlayfield(pf).c_str());
-
-        printf("\x1b[5;1HX position: %i    ", touch.px);
-        printf("\x1b[6;1HY position: %i    ", touch.py);
-
         int *cs = handleInput(touch.px, touch.py);
 
+        // Handle input and set checkboxes
         if (kDown & KEY_TOUCH) pf[cs[0]][cs[1]] = 1;
 
-        printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
+        // Print playfield
+        printf("\x1b[1;1H%s", renderPlayfield(pf).c_str());
 
-        if (kDown & KEY_DUP) pf[1][0] = 1;
-        if (kDown & KEY_DLEFT) pf[0][1] = 1;
-        if (kDown & KEY_DRIGHT) pf[2][1] = 1;
-        if (kDown & KEY_DDOWN) pf[1][2] = 1;
+        // Print debug lines
+        printf("\x1b[5;1HX position: %i    ", touch.px);
+        printf("\x1b[6;1HY position: %i    ", touch.py);
+        printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
