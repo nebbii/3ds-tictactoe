@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string>
 
-std::string renderPlayfield(int field[3][3]) {
+std::string renderPlayfield(int** field) {
     std::string pf;
 
     for(int y=0; y<3; y++) {
@@ -24,7 +24,7 @@ std::string renderPlayfield(int field[3][3]) {
     return pf;
 }
 
-int *handleInput(u16 px, u16 py) {
+int *handleTappedCell(u16 px, u16 py) {
     static int slot[] = {-1, -1};
 
     if (px < 8) {
@@ -56,49 +56,90 @@ int *handleInput(u16 px, u16 py) {
     return slot;
 }
 
+int checkWinCondition(int pf[3][3]) {
+    return 1;
+}
+
+int** clearPlayfield() {
+    int** arr;
+    arr = new int*[3];
+
+    for (int h=0; h<3; h++) {
+        arr[h] = new int[3];
+
+        for(int w=0; w<3; w++) {
+            arr[h][w] = 0;
+        }
+    }
+
+    return arr;
+}
+
 
 int main(int argc, char **argv) {
     gfxInitDefault();
     consoleInit(GFX_BOTTOM, NULL);
 
-    int pf[3][3] = {
-        {0, 0, 0},
-        {0, 0, 0},
-        {0, 0, 0}
-    };
+    int** pf = clearPlayfield();
 
     int turn = 1;
+    int win = 0;
+
+    int score[] = {0, 0};
 
     // Main loop
     while (aptMainLoop())
     {
         // Read inputs
         hidScanInput(); 
+        u32 kDown = hidKeysDown();
         touchPosition touch;
         hidTouchRead(&touch);
         
-        // Check for buttons
-        u32 kDown = hidKeysDown();
-        int *cs = handleInput(touch.px, touch.py);
+        switch(win) {
+            case 0:
+                {
+                    // Check for tapped cells
+                    int *cs = handleTappedCell(touch.px, touch.py);
 
-        // Handle input and set checkboxes
-        if ((kDown & KEY_TOUCH) && (cs[0] != -1 && cs[1] != -1)) { 
-            if (pf[cs[0]][cs[1]] == 0) {
-                pf[cs[0]][cs[1]] = turn;
+                    // On tap within playfield
+                    if ((kDown & KEY_TOUCH) && (cs[0] != -1 && cs[1] != -1)) { 
+                        if (pf[cs[0]][cs[1]] == 0) {
+                            pf[cs[0]][cs[1]] = turn;
 
-                // flip turn
-                turn = (turn == 1 ? 2 : 1);
-            }
+                            // flip turn
+                            turn = (turn == 1 ? 2 : 1);
+
+                            win = 1;
+                        }
+                    }
+
+                    //printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
+
+                    break;
+                }
+            case 1:
+                score[0]++;
+            case 2:
+                score[1]++;
+            default:
+                printf("\x1b[9;1HPlayer %i has won!", win);
+
+                if (kDown & KEY_TOUCH) {
+                    pf = clearPlayfield();
+                    win = 0;
+                }
         }
 
         // Print playfield
         printf("\x1b[1;1H%s", renderPlayfield(pf).c_str());
 
         // Print debug lines
-        printf("\x1b[5;1HX position: %i    ", touch.px);
-        printf("\x1b[6;1HY position: %i    ", touch.py);
-        printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
-        printf("\x1b[8;1HTurn: %i", turn);
+        printf("\x1b[5;1HPlayer 1 score: %i", score[0]);
+        printf("\x1b[6;1HPlayer 2 score: %i", score[1]);
+        //printf("\x1b[5;1HX position: %i    ", touch.px);
+        //printf("\x1b[6;1HY position: %i    ", touch.py);
+        //printf("\x1b[8;1HTurn: %i", turn);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
