@@ -24,7 +24,7 @@ std::string renderPlayfield(int** field) {
     return pf;
 }
 
-int *handleTappedCell(u16 px, u16 py) {
+int* handleTappedCell(u16 px, u16 py) {
     static int slot[] = {-1, -1};
 
     if (px < 8) {
@@ -56,8 +56,26 @@ int *handleTappedCell(u16 px, u16 py) {
     return slot;
 }
 
-int checkWinCondition(int pf[3][3]) {
-    return 1;
+int checkWinCondition(int** pf) {
+    for(int i=0; i<3; i++) {
+        if((pf[i][0]==1 && pf[i][1]==1 && pf[i][2]==1) ||
+           (pf[0][i]==1 && pf[1][i]==1 && pf[2][i]==1) ||
+           (pf[0][0]==1 && pf[1][1]==1 && pf[2][2]==1) ||
+           (pf[0][2]==1 && pf[1][1]==1 && pf[2][0]==1))
+        {
+            return 10;
+        }
+
+        if((pf[i][0]==2 && pf[i][1]==2 && pf[i][2]==2) ||
+           (pf[0][i]==2 && pf[1][i]==2 && pf[2][i]==2) ||
+           (pf[0][0]==2 && pf[1][1]==2 && pf[2][2]==2) ||
+           (pf[0][2]==2 && pf[1][1]==2 && pf[2][0]==2))
+        {
+            return 20;
+        }
+    }
+
+    return 0;
 }
 
 int** clearPlayfield() {
@@ -83,7 +101,7 @@ int main(int argc, char **argv) {
     int** pf = clearPlayfield();
 
     int turn = 1;
-    int win = 0;
+    int state = 0;
 
     int score[] = {0, 0};
 
@@ -96,7 +114,7 @@ int main(int argc, char **argv) {
         touchPosition touch;
         hidTouchRead(&touch);
         
-        switch(win) {
+        switch(state) {
             case 0:
                 {
                     // Check for tapped cells
@@ -110,36 +128,35 @@ int main(int argc, char **argv) {
                             // flip turn
                             turn = (turn == 1 ? 2 : 1);
 
-                            win = 1;
+                            state = checkWinCondition(pf);
                         }
                     }
 
-                    //printf("\x1b[7;1HDetected Slot: %i, %i    ", cs[0], cs[1]);
-
+                    // blank out win screen
+                    printf("\x1b[9;1H                  ");
                     break;
                 }
-            case 1:
+            case 10:
                 score[0]++;
-            case 2:
+                state = state/10;
+                break;
+            case 20:
                 score[1]++;
+                state = state/10;
+                break;
             default:
-                printf("\x1b[9;1HPlayer %i has won!", win);
+                printf("\x1b[9;1HPlayer %i has won!", state);
 
                 if (kDown & KEY_TOUCH) {
                     pf = clearPlayfield();
-                    win = 0;
+                    turn = state = 0;
                 }
         }
-
         // Print playfield
         printf("\x1b[1;1H%s", renderPlayfield(pf).c_str());
-
-        // Print debug lines
+        // Print scoreboard
         printf("\x1b[5;1HPlayer 1 score: %i", score[0]);
         printf("\x1b[6;1HPlayer 2 score: %i", score[1]);
-        //printf("\x1b[5;1HX position: %i    ", touch.px);
-        //printf("\x1b[6;1HY position: %i    ", touch.py);
-        //printf("\x1b[8;1HTurn: %i", turn);
 
         gfxFlushBuffers();
         gfxSwapBuffers();
